@@ -1,5 +1,7 @@
 package com.byteapps.geoattendence.Screens
 
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,20 +34,31 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.byteapps.Features.MarkAttendance.presantation.MarkAttendanceViewModel
 import com.byteapps.geoattendence.AttendanceStatus
 import com.byteapps.geoattendence.R
 import com.byteapps.geoattendence.Status
 import com.byteapps.geoattendence.UIComponents.CommonTextField
+import com.byteapps.geoattendence.UIComponents.LoadingScreen
+import com.byteapps.geoattendence.UIComponents.StatusScreen
+import com.byteapps.geoattendence.Utils.ResultState
 import com.byteapps.geoattendence.ui.theme.Background
 import com.byteapps.geoattendence.ui.theme.Green
 import com.byteapps.geoattendence.ui.theme.Light_Black
@@ -54,10 +67,36 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(markAttendanceViewModel: MarkAttendanceViewModel,context: Context)
+
+{
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context1 = LocalContext.current
+
+    val result = markAttendanceViewModel.result.collectAsState().value
+
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
+
+
+    if (result.isLoading){
+        isLoading = true
+    }
+    else if (result.error.isNotEmpty()){
+        isLoading = false
+        StatusScreen(text = result.error)
+    }else{
+        isLoading = false
+
+        if (result.isSuccess == true){
+            Toast.makeText(context1,"Attendance marked!",Toast.LENGTH_SHORT).show()
+        }else{
+            Toast.makeText(context1,"you are not at location",Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
 
@@ -144,7 +183,7 @@ fun HomeScreen() {
                                 containerColor = Green
                             ),
                             onClick = {
-
+                                markAttendanceViewModel.markAttendance(context)
                             },
                             shape = CircleShape
 
@@ -199,5 +238,6 @@ fun HomeScreen() {
 
 
         }
+        if (isLoading) LoadingScreen()
     }
 }

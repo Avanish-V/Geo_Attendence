@@ -2,6 +2,8 @@ package com.byteapps.serrvicewala.DI
 
 
 
+import com.byteapps.Features.MarkAttendance.data.MarkAttendanceImpl
+import com.byteapps.Features.MarkAttendance.domain.MarkAttendanceRepository
 import com.byteapps.Features.UserProfile.data.UserProfileRepoImpl
 import com.byteapps.Features.UserProfile.domain.UserProfileRepository
 import com.byteapps.geoattendence.Authentication.domain.AuthRepository
@@ -21,4 +23,6 @@ abstract class RepositoryModule {
     @Binds
     abstract fun providesUserProfileRepository(userProfileRepoImpl: UserProfileRepoImpl):UserProfileRepository
 
+    @Binds
+    abstract fun providesMarkAttendanceRepository(markAttendanceImpl: MarkAttendanceImpl):MarkAttendanceRepository
 }

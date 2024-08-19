@@ -1,15 +1,12 @@
 package com.byteapps.geoattendence.Authentication.presantation.Screens
 
-import android.graphics.ImageDecoder
+import android.annotation.SuppressLint
 import android.net.Uri
-import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -34,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -47,14 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.byteapps.Features.UserProfile.data.UserProfileDTO
@@ -64,13 +57,14 @@ import com.byteapps.geoattendence.R
 import com.byteapps.geoattendence.UIComponents.LoadingScreen
 import com.byteapps.geoattendence.Utils.NavRoutes
 import com.byteapps.geoattendence.Utils.ResultState
-import com.byteapps.geoattendence.ui.theme.DarkWhite
-import com.byteapps.geoattendence.ui.theme.Dull_White
+import com.byteapps.geoattendence.Vailidation.ProfileFormEvent
+import com.byteapps.geoattendence.Vailidation.ProfileFormValidation
 import com.byteapps.geoattendence.ui.theme.Light_Black
 import com.byteapps.geoattendence.ui.theme.Light_Yellow
+import com.byteapps.geoattendence.ui.theme.Pink
 import com.byteapps.geoattendence.ui.theme.Yellow
-import kotlinx.coroutines.launch
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileSetup(
@@ -78,17 +72,24 @@ fun ProfileSetup(
     userProfileViewModel: UserProfileViewModel
 ) {
 
+    val validationViewModel = viewModel<ProfileFormValidation>()
+    val state = validationViewModel.state.collectAsState()
+
     val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
 
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var imageUri by remember {
+       mutableStateOf<Uri?>(null)
+    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         imageUri = uri
+        validationViewModel.onEvent(ProfileFormEvent.UserImageChanged(uri))
     }
+
     var isWarning by remember {
         mutableStateOf(false)
     }
@@ -96,13 +97,58 @@ fun ProfileSetup(
         mutableStateOf(false)
     }
 
-    var userName by remember { mutableStateOf("") }
-    var userId by remember { mutableStateOf("") }
-    var officeId by remember { mutableStateOf("") }
-    var department by remember { mutableStateOf("") }
-    var degignation by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var mobile by remember { mutableStateOf("") }
+
+
+    LaunchedEffect(context) {
+        validationViewModel.validationEvents.collect { event ->
+            when (event) {
+                is ProfileFormValidation.ValidationEvent.Success -> {
+                    if (imageUri != null) {
+                        userProfileViewModel.uploadUserImage(imageUri = imageUri!!).collect { uploadResult ->
+                            when (uploadResult) {
+                                is ResultState.Loading -> {
+                                    isLoading = true
+                                }
+                                is ResultState.Error -> {
+                                    isLoading = false
+                                    Toast.makeText(context, uploadResult.message, Toast.LENGTH_LONG).show()
+                                }
+                                is ResultState.Success -> {
+                                    userProfileViewModel.createUserProfile(
+                                        userProfileDTO = UserProfileDTO(
+                                            userName = state.value.userName,
+                                            userId = state.value.useID,
+                                            profilePhoto = uploadResult.data,
+                                            officeId = state.value.officeId,
+                                            department = state.value.department,
+                                            designation = state.value.degignation,
+                                            email = state.value.email,
+                                            mobile = state.value.mobile
+                                        )
+                                    ).collect { createResult ->
+                                        when (createResult) {
+                                            is ResultState.Loading -> {
+                                                isLoading = true
+                                            }
+                                            is ResultState.Error -> {
+                                                isLoading = false
+                                                Toast.makeText(context, createResult.message, Toast.LENGTH_LONG).show()
+                                            }
+                                            is ResultState.Success -> {
+                                                navHostController.navigate(NavRoutes.MainScreen.Parent.route)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Toast.makeText(context, "Please select an image.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
 
 
     Scaffold (
@@ -116,54 +162,7 @@ fun ProfileSetup(
                             .shadow(10.dp, spotColor = Blue, ambientColor = Blue),
                         onClick = {
 
-                            scope.launch {
-                               imageUri?.let {
-                                   userProfileViewModel.uploadUserImage(imageUri = it).collect{
-                                       when(it){
-                                           is ResultState.Loading->{
-                                               isLoading = true
-                                           }
-                                           is ResultState.Error->{
-                                               isLoading = false
-                                               Toast.makeText(context,it.message,Toast.LENGTH_LONG).show()
-                                               Log.d("ERROR_IS",it.message)
-                                           }
-                                           is ResultState.Success->{
-
-                                               userProfileViewModel.createUserProfile(
-                                                   userProfileDTO = UserProfileDTO(
-                                                       userName = userName,
-                                                       userId = userId,
-                                                       profilePhoto = it.data,
-                                                       officeId = officeId,
-                                                       department = department,
-                                                       designation = degignation,
-                                                       email = email,
-                                                       mobile = mobile
-                                                   )
-                                               ).collect{
-                                                   when(it){
-                                                       is ResultState.Loading->{
-                                                           isLoading = true
-                                                       }
-
-                                                       is ResultState.Error->{
-                                                           isLoading = false
-                                                           Toast.makeText(context,it.message,Toast.LENGTH_LONG).show()
-                                                           Log.d("ERROR_IS",it.message)
-                                                       }
-
-                                                       is ResultState.Success->{
-                                                           navHostController.navigate(NavRoutes.MainScreen.Parent.route)
-                                                       }
-                                                   }
-                                               }
-
-                                           }
-                                       }
-                                   }
-                               }
-                            }
+                            validationViewModel.onEvent(ProfileFormEvent.Submit)
 
                         },
                         shape = RoundedCornerShape(5.dp),
@@ -199,7 +198,7 @@ fun ProfileSetup(
 
                 ) {
                     AsyncImage(
-                        model = if (imageUri == null) R.drawable.avatar else imageUri,
+                        model = state.value.userImage ?: R.drawable.avatar,
                         contentDescription = null,
                         modifier = Modifier
                             .size(150.dp)
@@ -208,11 +207,15 @@ fun ProfileSetup(
                     )
 
                     IconButton(
-                        onClick = { imagePickerLauncher.launch("image/*") },
+                        onClick = { imagePickerLauncher.launch("image/*")},
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .size(40.dp)
-                            .border(1.dp, Blue, CircleShape),
+                            .border(
+                                1.dp,
+                                if (state.value.userImageError != null) Pink else Blue,
+                                CircleShape
+                            ),
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = Blue
                         )
@@ -232,32 +235,32 @@ fun ProfileSetup(
                 Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
 
                     CommonTextField(
-                        value = userName,
-                        onValueChang = {userName = it},
+                        value = state.value.userName,
+                        onValueChang = {validationViewModel.onEvent(ProfileFormEvent.UserNameChanged(it))},
                         label = "Employee Name*",
                         placeholder = "John",
-                        isError = false,
+                        isError = state.value.userNameError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         keyboardActions = KeyboardActions(onNext = {})
                     )
 
                     CommonTextField(
-                        value = userId,
-                        onValueChang = {userId = it},
+                        value = state.value.useID,
+                        onValueChang = {validationViewModel.onEvent(ProfileFormEvent.UserIDChanged(it))},
                         label = "Employee Id*",
                         placeholder = "Enter your Id",
-                        isError = false,
+                        isError = state.value.useIDError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         keyboardActions = KeyboardActions(onNext = {})
                     )
 
                     Column {
                         CommonTextFieldWithTrailingIcon(
-                            value =officeId,
-                            onValueChang = {officeId = it},
+                            value =state.value.officeId,
+                            onValueChang = {validationViewModel.onEvent(ProfileFormEvent.OfficeIDChanged(it))},
                             label = "Office Id*",
                             placeholder = "Office/College/University",
-                            isError = false,
+                            isError = state.value.officeIDError != null,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                             keyboardActions = KeyboardActions(onNext = {}),
                             trailingIcon = {
@@ -281,38 +284,38 @@ fun ProfileSetup(
                     }
 
                     CommonTextField(
-                        value = department,
-                        onValueChang = {department = it},
+                        value = state.value.department,
+                        onValueChang = {validationViewModel.onEvent(ProfileFormEvent.DepartmentChanged(it))},
                         label = "Department*",
                         placeholder = "Enter your department",
-                        isError = false,
+                        isError = state.value.departmentError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         keyboardActions = KeyboardActions(onNext = {})
                     )
                     CommonTextField(
-                        value = degignation,
-                        onValueChang = {degignation = it},
+                        value = state.value.degignation,
+                        onValueChang = {validationViewModel.onEvent(ProfileFormEvent.DegignationChanged(it))},
                         label = "Designation*",
                         placeholder = "Enter your Designation",
-                        isError = false,
+                        isError = state.value.degignationError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         keyboardActions = KeyboardActions(onNext = {})
                     )
                     CommonTextField(
-                        value = email,
-                        onValueChang = {email = it},
+                        value = state.value.email,
+                        onValueChang = {validationViewModel.onEvent(ProfileFormEvent.EmailChanged(it))},
                         label = "Email*",
                         placeholder = "example@gamil.com",
-                        isError = false,
+                        isError = state.value.emailError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         keyboardActions = KeyboardActions(onNext = {})
                     )
                     CommonTextField(
-                        value = mobile,
-                        onValueChang = {mobile = it},
+                        value = state.value.mobile,
+                        onValueChang = {validationViewModel.onEvent(ProfileFormEvent.MobileChanged(it))},
                         label = "Mobile*",
                         placeholder = "94xxxxxxxx",
-                        isError = false,
+                        isError = state.value.mobileError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         keyboardActions = KeyboardActions(onNext = {})
                     )
@@ -354,7 +357,8 @@ fun CommonTextField(
         keyboardActions = keyboardActions,
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.Transparent,
-            unfocusedContainerColor = Color.Transparent
+            unfocusedContainerColor = Color.Transparent,
+            errorContainerColor = Color.Transparent
         )
 
     )
@@ -386,7 +390,8 @@ fun CommonTextFieldWithTrailingIcon(
         keyboardActions = keyboardActions,
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.Transparent,
-            unfocusedContainerColor = Color.Transparent
+            unfocusedContainerColor = Color.Transparent,
+            errorContainerColor = Color.Transparent
         ),
         trailingIcon = {
             trailingIcon()

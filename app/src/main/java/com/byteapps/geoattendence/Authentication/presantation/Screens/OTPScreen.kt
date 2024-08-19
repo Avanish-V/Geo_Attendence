@@ -54,7 +54,7 @@ fun OTPScreen(
     val resultState = userProfileViewModel.validateUser.collectAsState()
     val annotatedString = buildAnnotatedString {
         withStyle(style = SpanStyle(textDecoration = TextDecoration.None)) {
-            append("Don’t receive OTP code?")
+            append("Didn’t receive OTP code?")
         }
         withStyle(
             style = SpanStyle(
@@ -81,16 +81,21 @@ fun OTPScreen(
 
     var otp by rememberSaveable { mutableStateOf("") }
 
-
-    LaunchedEffect(resultState.value.isExist) {
-        resultState.value.isExist?.let { isExist ->
-            if (isExist) {
-                navHostController.navigate(NavRoutes.MainScreen.Parent.route)
-            } else {
-                navHostController.navigate(NavRoutes.ProfileSetup.route)
-            }
-        }
-    }
+//    LaunchedEffect(resultState.value.isExist) {
+//        resultState.value.isExist?.let { isExist ->
+//            Log.d("ISUSER_EXIST", isExist.toString())
+//            if (isExist) {
+//                // User exists, navigate to the main screen
+//                navHostController.navigate(NavRoutes.MainScreen.Parent.route)
+//            } else {
+//                // User does not exist, navigate to profile setup screen
+//                navHostController.navigate(NavRoutes.ProfileSetup.route)
+//                // Log the time when the user is found to be new
+//                val currentTime = System.currentTimeMillis()
+//                Log.d("NEW_USER", "User is new, time: $currentTime")
+//            }
+//        }
+//    }
 
     Column(
         Modifier
@@ -128,7 +133,7 @@ fun OTPScreen(
                 text = annotatedString,
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier.clickable {
-                    //navHostController.navigate(NestedScreens.Login.PhoneNumber.route)
+                    // Handle Resend action here
                 }
             )
         }
@@ -145,9 +150,10 @@ fun OTPScreen(
                         when (result) {
                             is ResultState.Loading -> isLoading = true
                             is ResultState.Success -> {
-
-                               userProfileViewModel.validateUser(result.data.userUUID.toString())
-
+                                // Validate user after successful sign in
+                                userProfileViewModel.validateUser(
+                                    result.data.userUUID.toString(),
+                                )
                             }
                             is ResultState.Error -> {
                                 isLoading = false

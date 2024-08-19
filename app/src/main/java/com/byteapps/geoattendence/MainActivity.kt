@@ -56,6 +56,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import com.byteapps.Features.MarkAttendance.presantation.MarkAttendanceViewModel
 import com.byteapps.Features.UserProfile.presantation.UserProfileViewModel
 import com.byteapps.geoattendence.Authentication.presantation.Screens.ProfileSetup
 import com.byteapps.geoattendence.Screens.MainScreen
@@ -92,7 +93,8 @@ class MainActivity : ComponentActivity() {
     private val userProfileViewModel: UserProfileViewModel by viewModels()
     private val authViewModel: AuthViewModel by viewModels()
     private val permissionViewModel:PermissionViewModel by viewModels()
-    private lateinit var auth: FirebaseAuth
+    private val markAttendanceViewModel:MarkAttendanceViewModel by viewModels()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,25 +106,16 @@ class MainActivity : ComponentActivity() {
             userProfileViewModel.validateUser.value.isLoading
         }
 
-        auth = FirebaseAuth.getInstance()
         val context = applicationContext
 
         setContent {
+            val navHostController = rememberNavController()
 
-
-            // Launch the user validation in a LaunchedEffect
             LaunchedEffect(context) {
-                val currentUserUid = auth.currentUser?.uid
-                if (currentUserUid != null) {
-                    userProfileViewModel.validateUser(currentUserUid)
-                }
+                userProfileViewModel.validateUser(FirebaseAuth.getInstance().currentUser?.uid ?: "Not authenticated")
             }
 
             val resultState = userProfileViewModel.validateUser.collectAsState()
-
-            val isLoggedIn by remember {
-                mutableStateOf(auth.currentUser?.uid?.isNotEmpty() == true)
-            }
 
             GeoAttendenceTheme {
 
@@ -135,22 +128,12 @@ class MainActivity : ComponentActivity() {
                         // Handle error state (e.g., show an error message)
                         StatusScreen(text = resultState.value.error)
                     }
-                    resultState.value.isExist != null -> {
-                        val isExist = resultState.value.isExist
-                        val navHostController = rememberNavController()
+                    resultState.value.navRoute != null -> {
 
-                        val startDestination = when {
-                            !isLoggedIn -> NavRoutes.Authentication.route
-                            isExist == false -> NavRoutes.ProfileSetup.route
-                            else -> NavRoutes.MainScreen.route
-                        }
-
-                        // Log to check what the startDestination is set to
-                        Log.d("Navigation", "Start destination: $startDestination")
-
+                        Log.d("ROUTES", resultState.value.navRoute!!.route)
                         NavHost(
                             navController = navHostController,
-                            startDestination = startDestination,
+                            startDestination = resultState.value.navRoute!!.route,
                             enterTransition = { EnterTransition.None },
                             exitTransition = { ExitTransition.None },
                             popEnterTransition = { EnterTransition.None },
@@ -203,32 +186,12 @@ class MainActivity : ComponentActivity() {
                                 composable(NavRoutes.MainScreen.Parent.route) {
                                     MainScreen(
                                         permissionViewModel = permissionViewModel,
+                                        markAttendanceViewModel = markAttendanceViewModel,
                                         context = context
                                     )
                                 }
                             }
 
-                            navigation(
-                                startDestination = NavRoutes.MainScreen.Parent.Home.route,
-                                route = NavRoutes.MainScreen.Parent.route,
-                                enterTransition = { EnterTransition.None },
-                                exitTransition = { ExitTransition.None },
-                                popEnterTransition = { EnterTransition.None },
-                                popExitTransition = { ExitTransition.None }
-                            ) {
-                                composable(route = NavRoutes.MainScreen.Parent.Home.route) {
-                                    HomeScreen()
-                                }
-                                composable(route = NavRoutes.MainScreen.Parent.Attendance.route) {
-                                    AttendanceScreen(navHostController = navHostController)
-                                }
-                                composable(route = NavRoutes.MainScreen.Parent.ApplyLeave.route) {
-                                    ApplyLeaveScreen()
-                                }
-                                composable(route = NavRoutes.MainScreen.Parent.Profile.route) {
-                                    ProfileScreen()
-                                }
-                            }
                         }
                     }
                 }

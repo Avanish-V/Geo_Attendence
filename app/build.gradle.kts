@@ -86,4 +86,9 @@ dependencies {
     implementation (libs.androidx.hilt.navigation.compose)
 
     implementation(libs.coil.compose)
+
+    //Google Services & Maps
+    implementation (libs.play.services.location)
+    implementation (libs.maps.compose)
+    implementation (libs.play.services.maps)
 }

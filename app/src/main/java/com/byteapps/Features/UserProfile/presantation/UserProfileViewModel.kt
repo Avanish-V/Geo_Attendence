@@ -1,19 +1,16 @@
 package com.byteapps.Features.UserProfile.presantation
 
 import android.net.Uri
-import android.util.Log
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.byteapps.Features.UserProfile.data.UserProfileDTO
 import com.byteapps.Features.UserProfile.domain.UserProfileRepository
+import com.byteapps.geoattendence.Utils.NavRoutes
 import com.byteapps.geoattendence.Utils.ResultState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import javax.annotation.meta.When
 import javax.inject.Inject
 
 @HiltViewModel
@@ -48,8 +45,8 @@ class UserProfileViewModel @Inject constructor(private val userProfileRepository
     }
 
 
-    fun validateUser(userUID:String): Boolean? {
-        val isExist = mutableStateOf(Boolean)
+    fun validateUser(userUID:String,) {
+
         viewModelScope.launch {
             userProfileRepository.isUserExist(userUID).collect{
                 when(it){
@@ -60,13 +57,13 @@ class UserProfileViewModel @Inject constructor(private val userProfileRepository
                         _validateUser.value = ValidateUserResultState(error = it.message)
                     }
                     is ResultState.Success->{
-                        _validateUser.value = ValidateUserResultState(isExist = it.data)
+                        _validateUser.value = ValidateUserResultState(navRoute = it.data)
 
                     }
                 }
             }
         }
-        return _validateUser.value.isExist
+
 
     }
 
@@ -86,6 +83,6 @@ data class UploadImageResultState(
 
 data class ValidateUserResultState(
     val isLoading:Boolean = false,
-    val isExist: Boolean? = null,
+    val navRoute: NavRoutes? = null,
     val error:String = ""
 )

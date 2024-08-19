@@ -49,6 +49,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.byteapps.Features.MarkAttendance.presantation.MarkAttendanceViewModel
 import com.byteapps.geoattendence.ApplyLeaveScreen
 import com.byteapps.geoattendence.Authentication.presantation.Screens.ProfileSetup
 import com.byteapps.geoattendence.ProfileScreen
@@ -68,6 +69,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MainScreen(
     permissionViewModel: PermissionViewModel,
+    markAttendanceViewModel: MarkAttendanceViewModel,
     context: Context
 ) {
 
@@ -171,7 +173,10 @@ fun MainScreen(
             NavHost(modifier = Modifier.weight(1f), navController = navHostController, startDestination = NavRoutes.MainScreen.Parent.Home.route) {
 
                 composable(route = NavRoutes.MainScreen.Parent.Home.route){
-                    HomeScreen()
+                    HomeScreen(
+                        markAttendanceViewModel = markAttendanceViewModel,
+                        context = context
+                    )
                 }
                 composable(route = NavRoutes.MainScreen.Parent.Attendance.route){
                     AttendanceScreen(navHostController)

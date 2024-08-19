@@ -23,7 +23,6 @@ fun PermissionDialog(
     modifier:Modifier = Modifier
 ) {
 
-
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
